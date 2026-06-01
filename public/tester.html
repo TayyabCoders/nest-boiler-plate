@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Notification Tester</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .status.disconnected {
+            background: #ef4444;
+        }
+
+        .status.connected {
+            background: #10b981;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 30px;
+        }
+
+        .panel {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .panel h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #1f2937;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #374151;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+            font-family: inherit;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-disconnect {
+            background: #ef4444;
+        }
+
+        .btn-disconnect:hover {
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+
+        .log-container {
+            grid-column: 1 / -1;
+        }
+
+        .log {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            height: 400px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .log-entry {
+            padding: 8px;
+            margin-bottom: 4px;
+            border-radius: 4px;
+            border-left: 3px solid transparent;
+        }
+
+        .log-entry.info {
+            background: rgba(59, 130, 246, 0.1);
+            border-left-color: #3b82f6;
+        }
+
+        .log-entry.success {
+            background: rgba(16, 185, 129, 0.1);
+            border-left-color: #10b981;
+        }
+
+        .log-entry.error {
+            background: rgba(239, 68, 68, 0.1);
+            border-left-color: #ef4444;
+        }
+
+        .log-entry.notification {
+            background: rgba(168, 85, 247, 0.1);
+            border-left-color: #a855f7;
+        }
+
+        .timestamp {
+            color: #9ca3af;
+            font-size: 11px;
+        }
+
+        .unread-badge {
+            display: inline-block;
+            background: #ef4444;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .notifications-list {
+            background: white;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 2px solid #e5e7eb;
+        }
+
+        .notification-item {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 13px;
+        }
+
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+
+        .notification-item.unread {
+            background: #eff6ff;
+            font-weight: 600;
+        }
+
+        .notification-type {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-bottom: 5px;
+        }
+
+        .clear-log {
+            background: #6b7280;
+            margin-top: 10px;
+        }
+
+        .info-box {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: #1e40af;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>WebSocket Notification Tester</h1>
+            <div class="status disconnected" id="connectionStatus">Disconnected</div>
+            <div id="unreadCount"></div>
+        </div>
+
+        <div class="main-content">
+            <!-- Connection Panel -->
+            <div class="panel">
+                <h2>Connection Settings</h2>
+                <div class="info-box">
+                    Get your JWT token from the login endpoint or browser localStorage
+                </div>
+                <div class="form-group">
+                    <label>Server URL</label>
+                    <input type="text" id="serverUrl" value="http://localhost:3000"
+                        placeholder="http://localhost:3000">
+                </div>
+                <div class="form-group">
+                    <label>Namespace</label>
+                    <select id="namespace">
+                        <option value="/notifications">/notifications</option>
+                        <option value="/messaging">/messaging</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>JWT Token</label>
+                    <textarea id="jwtToken" placeholder="Paste your JWT token here"></textarea>
+                </div>
+                <button id="connectBtn">Connect</button>
+                <button id="disconnectBtn" class="btn-disconnect" disabled>Disconnect</button>
+            </div>
+
+            <!-- Notifications Actions Panel -->
+            <div class="panel">
+                <h2>Notification Actions</h2>
+
+                <h3 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">Get Notifications</h3>
+                <div class="form-group">
+                    <label>Page</label>
+                    <input type="number" id="notifPage" value="1" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Limit</label>
+                    <input type="number" id="notifLimit" value="10" min="1" max="100">
+                </div>
+                <button id="getNotificationsBtn" disabled>Get Notifications</button>
+
+                <h3 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">Mark as Read</h3>
+                <div class="form-group">
+                    <label>Notification ID</label>
+                    <input type="number" id="notificationId" placeholder="Enter notification ID">
+                </div>
+                <div class="btn-group">
+                    <button id="markAsReadBtn" class="btn-small" disabled>Mark as Read</button>
+                    <button id="markAllReadBtn" class="btn-small" disabled>Mark All Read</button>
+                </div>
+            </div>
+
+            <!-- Messaging Actions Panel -->
+            <div class="panel">
+                <h2>Messaging Actions</h2>
+
+                <h3 style="font-size: 14px; margin-bottom: 10px;">Send Message</h3>
+                <div class="form-group">
+                    <label>Conversation ID</label>
+                    <input type="number" id="conversationId" placeholder="Enter conversation ID">
+                </div>
+                <div class="form-group">
+                    <label>Message</label>
+                    <textarea id="messageContent" placeholder="Type your message"></textarea>
+                </div>
+                <button id="sendMessageBtn" disabled>Send Message</button>
+
+                <h3 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">Conversation</h3>
+                <div class="btn-group">
+                    <button id="joinConversationBtn" class="btn-small" disabled>Join Conversation</button>
+                    <button id="leaveConversationBtn" class="btn-small" disabled>Leave Conversation</button>
+                </div>
+
+                <h3 style="font-size: 14px; margin-top: 20px; margin-bottom: 10px;">Typing Indicator</h3>
+                <div class="btn-group">
+                    <button id="typingStartBtn" class="btn-small" disabled>Start Typing</button>
+                    <button id="typingStopBtn" class="btn-small" disabled>Stop Typing</button>
+                </div>
+            </div>
+
+            <!-- Log Panel -->
+            <div class="panel log-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2>Event Log</h2>
+                    <button class="clear-log" id="clearLogBtn"
+                        style="width: auto; margin-top: 0; padding: 6px 12px; font-size: 12px;">Clear Log</button>
+                </div>
+                <div class="log" id="eventLog"></div>
+
+                <div id="notificationsList" class="notifications-list" style="display: none;">
+                    <h3>Notifications List</h3>
+                    <div id="notificationsContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Helper: Add log entry (defined early for catch)
+        function log(message, type = 'info', data = null) {
+            const eventLog = document.getElementById('eventLog');
+            if (!eventLog) return;
+            
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+
+            const timestamp = document.createElement('div');
+            timestamp.className = 'timestamp';
+            timestamp.textContent = new Date().toLocaleTimeString();
+
+            const content = document.createElement('div');
+            content.textContent = message;
+
+            entry.appendChild(timestamp);
+            entry.appendChild(content);
+
+            if (data) {
+                const pre = document.createElement('pre');
+                pre.style.margin = '5px 0 0 0';
+                pre.style.fontSize = '11px';
+                pre.style.color = '#fff';
+                pre.textContent = JSON.stringify(data, null, 2);
+                entry.appendChild(pre);
+            }
+
+            eventLog.appendChild(entry);
+            eventLog.scrollTop = eventLog.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`, data || '');
+        }
+
+        // Global Error Handler
+        window.onerror = function(msg, url, line, col, error) {
+            log(`JS Error: ${msg} at ${line}:${col}`, 'error');
+            return false;
+        };
+
+        if (typeof io === 'undefined') {
+            log('CRITICAL: Socket.io library failed to load! Check your internet connection or if the CDN is blocked.', 'error');
+        }
+
+        // DOM Elements
+        const serverUrlInput = document.getElementById('serverUrl');
+        const namespaceSelect = document.getElementById('namespace');
+        const jwtTokenInput = document.getElementById('jwtToken');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const clearLogBtn = document.getElementById('clearLogBtn');
+        const unreadCountDisplay = document.getElementById('unreadCount');
+
+        // Notification Elements
+        const notifPageInput = document.getElementById('notifPage');
+        const notifLimitInput = document.getElementById('notifLimit');
+        const getNotificationsBtn = document.getElementById('getNotificationsBtn');
+        const notificationIdInput = document.getElementById('notificationId');
+        const markAsReadBtn = document.getElementById('markAsReadBtn');
+        const markAllReadBtn = document.getElementById('markAllReadBtn');
+        const notificationsList = document.getElementById('notificationsList');
+        const notificationsContent = document.getElementById('notificationsContent');
+
+        // Messaging Elements
+        const conversationIdInput = document.getElementById('conversationId');
+        const messageContentInput = document.getElementById('messageContent');
+        const sendMessageBtn = document.getElementById('sendMessageBtn');
+        const joinConversationBtn = document.getElementById('joinConversationBtn');
+        const leaveConversationBtn = document.getElementById('leaveConversationBtn');
+        const typingStartBtn = document.getElementById('typingStartBtn');
+        const typingStopBtn = document.getElementById('typingStopBtn');
+
+        // State
+        let socket = null;
+
+        // Helper: Update UI state
+        function setConnected(connected) {
+            if (connected) {
+                connectionStatus.textContent = 'Connected';
+                connectionStatus.className = 'status connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+
+                // Enable action buttons based on namespace
+                const ns = namespaceSelect.value;
+                if (ns === '/notifications') {
+                    getNotificationsBtn.disabled = false;
+                    markAsReadBtn.disabled = false;
+                    markAllReadBtn.disabled = false;
+                } else if (ns === '/messaging') {
+                    sendMessageBtn.disabled = false;
+                    joinConversationBtn.disabled = false;
+                    leaveConversationBtn.disabled = false;
+                    typingStartBtn.disabled = false;
+                    typingStopBtn.disabled = false;
+                }
+            } else {
+                connectionStatus.textContent = 'Disconnected';
+                connectionStatus.className = 'status disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+
+                // Disable all action buttons
+                const btns = [getNotificationsBtn, markAsReadBtn, markAllReadBtn, sendMessageBtn, 
+                            joinConversationBtn, leaveConversationBtn, typingStartBtn, typingStopBtn];
+                btns.forEach(b => b.disabled = true);
+                unreadCountDisplay.innerHTML = '';
+            }
+        }
+
+        // Connect
+        connectBtn.addEventListener('click', () => {
+            log('Connect button clicked', 'info');
+            const url = serverUrlInput.value;
+            const namespace = namespaceSelect.value;
+            const token = jwtTokenInput.value.trim();
+
+            if (!url) {
+                log('Please enter a server URL', 'error');
+                return;
+            }
+
+            if (!token) {
+                log('Please enter a JWT token', 'error');
+                return;
+            }
+
+            const fullUrl = url.replace(/\/$/, '') + namespace;
+            log(`Attempting connection to ${fullUrl}...`, 'info');
+
+            try {
+                if (socket) {
+                    log('Closing existing socket...', 'info');
+                    socket.disconnect();
+                }
+
+                socket = io(fullUrl, {
+                    auth: {
+                        token: token
+                    },
+                    transports: ['websocket', 'polling'],
+                    reconnection: false
+                });
+
+                log('Socket object created, waiting for connection...', 'info');
+
+                // Connection events
+                socket.on('connect', () => {
+                    log(`CONNECTED! ID: ${socket.id}`, 'success');
+                    setConnected(true);
+                });
+
+                socket.on('disconnect', (reason) => {
+                    log(`DISCONNECTED: ${reason}`, 'error');
+                    setConnected(false);
+                    socket = null;
+                });
+
+                socket.on('connect_error', (error) => {
+                    log(`CONNECTION ERROR: ${error.message}`, 'error', error);
+                    setConnected(false);
+                });
+
+                // Success event from my custom gateway
+                socket.on('connection_success', (data) => {
+                    log('Gateway Auth Success!', 'success', data);
+                });
+
+                // Notification Events
+                socket.on('new_notification', (data) => {
+                    log('NOTIF RECEIVED!', 'notification', data);
+                });
+
+            } catch (error) {
+                log(`CRASH during connection setup: ${error.message}`, 'error');
+            }
+        });
+
+        // Disconnect
+        disconnectBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.disconnect();
+            }
+        });
+
+        // Clear Log
+        clearLogBtn.addEventListener('click', () => {
+            document.getElementById('eventLog').innerHTML = '';
+        });
+
+    </script>
+</body>
+
+</html>

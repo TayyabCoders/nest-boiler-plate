@@ -1,0 +1,53 @@
+services:
+  # --- PostgreSQL Database Service ---
+  postgres:
+    image: postgres:16-alpine # Using a lightweight image
+    container_name: luxxage_dev_db_local
+    restart: unless-stopped
+    ports:
+      - "5432:5432" # Exposes the PostgreSQL port
+    environment:
+      POSTGRES_USER: docker
+      POSTGRES_PASSWORD: docker
+      POSTGRES_DB: luxxage_dev_db_local
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persist data
+    networks:
+      - app-network
+
+  # --- Redis Cache/Store Service ---
+  redis:
+    image: redis:7-alpine # Using a lightweight image
+    container_name: redis_cache_luxxage
+    restart: unless-stopped
+    command: redis-server --requirepass Redis
+    ports:
+      - "6379:6379" # Exposes the Redis port
+    environment:
+      - REDIS_PASSWORD=Redis
+    volumes:
+      - redis_data:/data # Persist data
+    networks:
+      - app-network
+
+  # --- Adminer Management Tool Service ---
+  adminer:
+    image: adminer:latest # A single-file universal database management tool
+    container_name: adminer_ui_luxxage
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080" # Access Adminer via http://localhost:8080
+    networks:
+      - app-network
+
+# --- Volumes for Data Persistence ---
+volumes:
+  postgres_data:
+  redis_data:
+
+# --- Networks for Inter-Service Communication ---
+networks:
+  app-network:
+    driver: bridge

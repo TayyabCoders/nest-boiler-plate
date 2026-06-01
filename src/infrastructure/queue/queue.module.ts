@@ -1,22 +1,9 @@
 import { Module, Global } from '@nestjs/common';
-import { BullModule } from '@nestjs/bullmq';
-import { ConfigService } from '@nestjs/config';
+import { QueueService } from './queue.service';
 
 @Global()
 @Module({
-  imports: [
-    BullModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        connection: {
-          host: config.get('REDIS_HOST'),
-          port: config.get('REDIS_PORT'),
-          password: config.get('REDIS_PASSWORD') || undefined,
-          ...(config.get('REDIS_TLS') ? { tls: { rejectUnauthorized: false } } : {}),
-        },
-      }),
-    }),
-  ],
-  exports: [BullModule],
+  providers: [QueueService],
+  exports: [QueueService],
 })
 export class QueueModule {}

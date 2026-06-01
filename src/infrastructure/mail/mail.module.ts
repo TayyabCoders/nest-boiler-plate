@@ -1,21 +1,15 @@
 import { Module, Global } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { BullModule } from '@nestjs/bullmq';
 import { MailService } from './mail.service';
-import { MailProcessor } from './mail.processor';
+import { MailConsumer } from './mail.consumer';
 import { NodemailerAdapter } from './adapters/nodemailer.adapter';
 import { AzureEmailAdapter } from './adapters/azure-email.adapter';
 
 @Global()
 @Module({
-  imports: [
-    BullModule.registerQueue({
-      name: 'mail',
-    }),
-  ],
   providers: [
     MailService,
-    MailProcessor,
+    MailConsumer,
     NodemailerAdapter,
     AzureEmailAdapter,
     {

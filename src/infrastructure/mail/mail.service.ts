@@ -1,15 +1,13 @@
 import { Injectable, Inject } from '@nestjs/common';
 import type { IMailProvider } from '@core/domain/ports/mail.port';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { QueueService, ROUTING_KEYS } from '../queue/queue.service';
 
 @Injectable()
 export class MailService {
   constructor(
     @Inject('IMailProvider')
     private readonly mailProvider: IMailProvider,
-    @InjectQueue('mail') 
-    private readonly mailQueue: Queue,
+    private readonly queueService: QueueService,
   ) {}
 
   /**
@@ -18,18 +16,10 @@ export class MailService {
    */
   async sendEmail(to: string, subject: string, body: string, isHtml: boolean = false, useQueue: boolean = true) {
     if (useQueue) {
-      await this.mailQueue.add('send-email', {
-        to,
-        subject,
-        body,
-        isHtml,
-      }, {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 5000,
-        },
-      });
+      await this.queueService.publish(
+        ROUTING_KEYS.NOTIFICATION_SEND,
+        { to, subject, body, isHtml }
+      );
       return;
     }
 

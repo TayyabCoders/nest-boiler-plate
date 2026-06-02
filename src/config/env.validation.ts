@@ -43,6 +43,8 @@ export const envSchema = z.object({
   REDIS_PASSWORD: z.string().optional(),
   REDIS_TLS: z.preprocess((val) => val === 'true', z.boolean()).default(false),
   REDIS_CACHE_TTL: z.coerce.number().default(600), // Default 10 minutes
+  REDIS_CLUSTER_NODES: z.string().optional(), // Comma-separated: "host1:port1,host2:port2"
+  REDIS_PREFIX: z.string().default('default'), // Key prefix for namespace isolation
 
   // RabbitMQ Config
   RABBITMQ_URL: z.string().default('amqp://localhost'),

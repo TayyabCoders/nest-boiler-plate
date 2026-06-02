@@ -1,65 +1,58 @@
-import { Injectable, LoggerService, ConsoleLogger, Scope } from '@nestjs/common';
+import { Injectable, LoggerService, Scope, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import pino from 'pino';
+import { createPinoConfig } from './pino.config';
 import { ILogger } from '@core/domain/logger.interface';
 
 @Injectable({ scope: Scope.DEFAULT })
-export class LoggerAdapter extends ConsoleLogger implements ILogger, LoggerService {
-  private readonly secondaryLogging: string;
+export class LoggerAdapter implements ILogger, LoggerService {
+  private logger: pino.Logger;
 
-  constructor(private readonly configService: ConfigService) {
-    super();
-    this.secondaryLogging = this.configService.get<string>('SECONDARY_LOGGING') || 'NONE';
+  constructor(private readonly configService: ConfigService, @Optional() pinoLogger?: pino.Logger) {
+    this.logger = pinoLogger || pino(createPinoConfig(this.configService));
   }
 
-  log(message: any, context?: string): void {
-    super.log(message, context || 'App');
-    this.dispatchToSecondary('info', context || 'App', message);
+  debug(context: string, message: string, meta?: Record<string, unknown>): void {
+    this.logger.debug({ context, ...meta }, message);
   }
 
-  error(message: any, stack?: string, context?: string): void {
-    super.error(message, stack, context || 'App');
-    this.dispatchToSecondary('error', context || 'App', message, { stack });
+  log(context: string, message: string, meta?: Record<string, unknown>): void {
+    this.logger.info({ context, ...meta }, message);
   }
 
-  warn(message: any, context?: string): void {
-    super.warn(message, context || 'App');
-    this.dispatchToSecondary('warn', context || 'App', message);
+  error(context: string, message: string, trace?: string, meta?: Record<string, unknown>): void {
+    this.logger.error({ context, stack: trace, ...meta }, message);
   }
 
-  debug(message: any, context?: string): void {
-    if (process.env.NODE_ENV !== 'production') {
-      super.debug(message, context || 'App');
-    }
+  warn(context: string, message: string, meta?: Record<string, unknown>): void {
+    this.logger.warn({ context, ...meta }, message);
   }
 
+  fatal(context: string, message: string, meta?: Record<string, unknown>): void {
+    this.logger.fatal({ context, ...meta }, message);
+  }
+
+  info(context: string, message: string, meta?: Record<string, unknown>): void {
+    this.logger.info({ context, ...meta }, message);
+  }
+
+  trace(context: string, message: string, meta?: Record<string, unknown>): void {
+    this.logger.trace({ context, ...meta }, message);
+  }
+
+  // LoggerService interface methods (for NestJS compatibility)
   verbose(message: any, context?: string): void {
-    super.verbose(message, context || 'App');
+    this.logger.trace({ context: context || 'App' }, message);
   }
 
-  private dispatchToSecondary(level: string, context: string, message: string, meta?: any): void {
-    if (this.secondaryLogging === 'NONE') return;
-
-    switch (this.secondaryLogging) {
-      case 'MIXPANEL':
-        this.logToMixpanel(level, context, message, meta);
-        break;
-      case 'GA':
-        this.logToGoogleAnalytics(level, context, message, meta);
-        break;
-      default:
-        break;
-    }
+  setLogLevels(levels: string[]): void {
+    this.logger.level = levels[0] || 'info';
   }
 
-  private logToMixpanel(level: string, context: string, message: string, meta: any): void {
-    const token = this.configService.get<string>('MIXPANEL_TOKEN');
-    // TODO: Implement Mixpanel tracking logic
-    // console.log(`[Mixpanel] ${context}: ${message}`, meta);
-  }
-
-  private logToGoogleAnalytics(level: string, context: string, message: string, meta: any): void {
-    const id = this.configService.get<string>('GA_TRACKING_ID');
-    // TODO: Implement Google Analytics tracking logic
-    // console.log(`[GA] ${context}: ${message}`, meta);
+  child(context: string, meta?: Record<string, unknown>): ILogger {
+    const childLogger = this.logger.child({ context, ...meta });
+    const adapter = new LoggerAdapter(this.configService);
+    adapter.logger = childLogger;
+    return adapter;
   }
 }

@@ -23,7 +23,33 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository with production-grade logging, caching, and queue support.
+
+## Features
+
+- **Production-Grade Logging** - Powered by Pino with structured JSON logging, request lifecycle tracking, performance monitoring, and data redaction
+- **Hybrid Architecture** - Support for HTTP, Microservice, and Hybrid modes
+- **Caching** - Redis-based caching with TTL support
+- **Queue** - RabbitMQ integration for message processing
+- **Database** - TypeORM with PostgreSQL support
+- **Mail** - Multiple mail providers (SMTP, Azure)
+- **Health Checks** - Built-in health monitoring
+- **DDD Architecture** - Domain-Driven Design with clean separation of concerns
+
+## Logging
+
+The boilerplate includes production-grade logging powered by Pino with:
+
+- Structured JSON logging for log aggregators (ELK, Splunk, Datadog)
+- Request lifecycle tracking with request ID and correlation ID
+- Performance monitoring with segment-based timing
+- Slow request detection
+- Data redaction for security (passwords, tokens, etc.)
+- Error classification and automatic severity determination
+- Audit logging for compliance
+- Child loggers for per-module context
+
+See [docs/LOGGING_GUIDE.md](docs/LOGGING_GUIDE.md) for detailed usage instructions.
 
 ## Project setup
 

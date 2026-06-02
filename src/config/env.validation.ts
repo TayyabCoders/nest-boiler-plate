@@ -14,9 +14,11 @@ export const envSchema = z.object({
   APP_MODE: z.enum(['HTTP', 'MICROSERVICE', 'HYBRID']).default('HTTP'),
   
   // Logging Config
-  SECONDARY_LOGGING: z.enum(['NONE', 'MIXPANEL', 'GA']).default('NONE'),
-  MIXPANEL_TOKEN: z.string().optional(),
-  GA_TRACKING_ID: z.string().optional(),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  LOG_FORMAT: z.enum(['json', 'pretty']).default('json'),
+  LOG_REDACT_ENABLED: z.preprocess((val) => val === 'true', z.boolean()).default(true),
+  LOG_REQUEST_ENABLED: z.preprocess((val) => val === 'true', z.boolean()).default(true),
+  LOG_SLOW_REQUEST_THRESHOLD: z.coerce.number().default(1000),
   
   // JWT Config
   JWT_SECRET: z.string(),
@@ -50,18 +52,4 @@ export const envSchema = z.object({
   RABBITMQ_URL: z.string().default('amqp://localhost'),
   RABBITMQ_PREFETCH: z.coerce.number().default(1),
   RABBITMQ_MESSAGE_TTL: z.coerce.number().default(3600000), // 1 hour
-})
-.refine((data) => {
-  if (data.SECONDARY_LOGGING === 'MIXPANEL' && !data.MIXPANEL_TOKEN) return false;
-  return true;
-}, {
-  message: "MIXPANEL_TOKEN is required when SECONDARY_LOGGING is set to MIXPANEL",
-  path: ["MIXPANEL_TOKEN"],
-})
-.refine((data) => {
-  if (data.SECONDARY_LOGGING === 'GA' && !data.GA_TRACKING_ID) return false;
-  return true;
-}, {
-  message: "GA_TRACKING_ID is required when SECONDARY_LOGGING is set to GA",
-  path: ["GA_TRACKING_ID"],
 });

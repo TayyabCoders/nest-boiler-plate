@@ -37,6 +37,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
     this.logger.error(
       'AllExceptionsFilter',
       `[${request.method}] ${request.url} - Status: ${status} - Error: ${JSON.stringify(message)}`,
+      exception instanceof Error ? exception.stack : undefined,
+      {
+        type: 'http_error',
+        requestId: (request as any).id,
+        correlationId: (request as any).correlationId,
+        statusCode: status,
+        method: request.method,
+        url: request.url,
+        error: errorBody,
+      },
     );
 
     response.status(status).json({

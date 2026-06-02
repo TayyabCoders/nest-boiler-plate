@@ -1,6 +1,6 @@
 import { DatabaseModule } from '@infra/database/database.module';
 import { HealthModule } from '@modules/health/health.module';
-import { Module, Global } from '@nestjs/common';
+import { Module, Global, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { appConfig } from './config/app.config';
 import { LoggerModule } from '@infra/logger/logger.module';
@@ -15,6 +15,7 @@ import { QueueModule } from '@infra/queue/queue.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { CacheModule } from '@infra/cache/cache.module';
 import { TenantsModule } from '@modules/tenants/tenants.module';
+import { RequestLoggingMiddleware } from '@common/middleware/request-logging.middleware';
 
 @Global()
 @Module({
@@ -49,4 +50,8 @@ import { TenantsModule } from '@modules/tenants/tenants.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestLoggingMiddleware).forRoutes('*');
+  }
+}

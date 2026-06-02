@@ -37,12 +37,17 @@ export const envSchema = z.object({
   AZURE_EMAIL_CONNECTION_STRING: z.string().optional(),
   AZURE_EMAIL_SENDER: z.string().optional(),
 
-  // Redis Config (for BullMQ & Cache)
+  // Redis Config (for Cache)
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.coerce.number().default(6379),
   REDIS_PASSWORD: z.string().optional(),
   REDIS_TLS: z.preprocess((val) => val === 'true', z.boolean()).default(false),
   REDIS_CACHE_TTL: z.coerce.number().default(600), // Default 10 minutes
+
+  // RabbitMQ Config
+  RABBITMQ_URL: z.string().default('amqp://localhost'),
+  RABBITMQ_PREFETCH: z.coerce.number().default(1),
+  RABBITMQ_MESSAGE_TTL: z.coerce.number().default(3600000), // 1 hour
 })
 .refine((data) => {
   if (data.SECONDARY_LOGGING === 'MIXPANEL' && !data.MIXPANEL_TOKEN) return false;

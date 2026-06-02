@@ -30,6 +30,27 @@ services:
     networks:
       - app-network
 
+  # --- RabbitMQ Message Queue Service ---
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_luxxage
+    restart: unless-stopped
+    ports:
+      - "5672:5672" # AMQP port
+      - "15672:15672" # Management UI port
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
   # --- Adminer Management Tool Service ---
   adminer:
     image: adminer:latest # A single-file universal database management tool
@@ -46,6 +67,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  rabbitmq_data:
 
 # --- Networks for Inter-Service Communication ---
 networks:

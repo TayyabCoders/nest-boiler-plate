@@ -10,6 +10,7 @@ export class TransformInterceptor<T> implements NestInterceptor<T, ApiResponse<T
   constructor(private reflector: Reflector) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<ApiResponse<T>> {
+    const request = context.switchToHttp().getRequest();
     const message = this.reflector.getAllAndOverride<string>(RESPONSE_MESSAGE_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -21,6 +22,7 @@ export class TransformInterceptor<T> implements NestInterceptor<T, ApiResponse<T
         data: data ?? null,
         message,
         timestamp: new Date().toISOString(),
+        requestId: request.id,
       })),
     );
   }

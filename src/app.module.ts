@@ -16,6 +16,8 @@ import { APP_INTERCEPTOR, APP_FILTER, APP_GUARD } from '@nestjs/core';
 
 import { TransformInterceptor } from '@common/interceptors/transform.interceptor';
 
+import { PerformanceInterceptor } from '@common/interceptors/performance.interceptor';
+
 import { AllExceptionsFilter } from '@common/filters/http-exception.filter';
 
 import { MailModule } from '@infra/mail/mail.module';
@@ -90,11 +92,21 @@ import { RateLimitInterceptor } from '@common/interceptors/rate-limit.intercepto
 
   providers: [
 
+    RequestLoggingMiddleware,
+
     {
 
       provide: APP_INTERCEPTOR,
 
       useClass: TransformInterceptor,
+
+    },
+
+    {
+
+      provide: APP_INTERCEPTOR,
+
+      useClass: PerformanceInterceptor,
 
     },
 

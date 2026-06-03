@@ -296,4 +296,25 @@ export class RedisCacheService implements ICacheProvider {
     });
     return result === null ? false : result;
   }
+
+  async ttl(key: string): Promise<number> {
+    const prefixedKey = this.getPrefixedKey(key);
+    const result = await this.withErrorHandling('ttl', key, async () => {
+      const cacheManagerAny = this.cacheManager as any;
+      const store = cacheManagerAny.store;
+      return await store.client.ttl(prefixedKey);
+    });
+    return result === null ? -1 : result;
+  }
+
+  // Increment operations (for rate limiting)
+  async incr(key: string): Promise<number> {
+    const prefixedKey = this.getPrefixedKey(key);
+    const result = await this.withErrorHandling('incr', key, async () => {
+      const cacheManagerAny = this.cacheManager as any;
+      const store = cacheManagerAny.store;
+      return await store.client.incr(prefixedKey);
+    });
+    return result === null ? 0 : result;
+  }
 }

@@ -25,6 +25,10 @@ export interface ICacheProvider {
 
   // TTL operations
   changeExpiry(key: string, ttl: number): Promise<boolean>;
+  ttl(key: string): Promise<number>;
+
+  // Increment operations (for rate limiting)
+  incr(key: string): Promise<number>;
 
   // Health check
   healthCheck(): Promise<boolean>;

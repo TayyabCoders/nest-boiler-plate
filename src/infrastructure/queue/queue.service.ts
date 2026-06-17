@@ -17,6 +17,9 @@ const QUEUES = [
   { name: 'service:notification.message',  routingKey: 'service:notification.*' },
 ] as const;
 
+// New: factory data queue – no routingKey because the Shovel publishes directly
+export const FACTORY_RAW_QUEUE = 'factory.raw';
+
 export const ROUTING_KEYS = {
   USER_CREATED:         'user.created',
   USER_UPDATED:         'user.updated',
@@ -38,7 +41,16 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     private readonly logger: ILogger,
   ) {}
 
-  async onModuleInit()   { await this.initialize(); }
+  async onModuleInit()   {
+    this.logger.log('QueueService', '🚀 QueueService module initializing...');
+    try {
+      await this.initialize();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn('QueueService', `⚠️ RabbitMQ unavailable, running without queue: ${errorMessage}`);
+      // Don't throw - allow app to run without RabbitMQ
+    }
+  }
   async onModuleDestroy(){ await this.gracefulShutdown(); }
 
   private async initialize() {
@@ -46,15 +58,26 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     const prefetch = this.config.get<number>('RABBITMQ_PREFETCH', 1);
     const ttl      = this.config.get<number>('RABBITMQ_MESSAGE_TTL', 3600000);
 
+    this.logger.log('QueueService', `🔌 Attempting to connect to RabbitMQ at: ${url}`);
+
     this.connection = connect([url]);
 
-    this.connection.on('connect',    ()      => this.logger.log('QueueService', '✅ RabbitMQ connected'));
-    this.connection.on('disconnect', ({err}: {err?: Error}) => this.logger.warn('QueueService', `⚠️ RabbitMQ disconnected: ${err?.message}`));
+    this.connection.on('connect',    ()      => {
+      this.logger.log('QueueService', '✅ RabbitMQ connected');
+    });
+    this.connection.on('disconnect', ({err}: {err?: Error}) => {
+      this.logger.warn('QueueService', `⚠️ RabbitMQ disconnected: ${err?.message}`);
+    });
+    this.connection.on('error', (err: Error) => {
+      this.logger.error('QueueService', `❌ RabbitMQ connection error: ${err.message}`);
+    });
 
     // Publisher channel — sets up full topology on connect/reconnect
+    this.logger.log('QueueService', '📡 Creating publisher channel...');
     this.publishChannel = this.connection.createChannel({
       json: true,
       setup: async (channel: ConfirmChannel) => {
+        this.logger.log('QueueService', '⚙️ Setting up publisher channel topology...');
         await channel.prefetch(prefetch);
         await this.setupTopology(channel, ttl);
         this.logger.log('QueueService', '✅ RabbitMQ publisher channel ready');
@@ -62,6 +85,7 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     });
 
     // Consumer channel — separate from publisher
+    this.logger.log('QueueService', '📡 Creating consumer channel...');
     this.consumeChannel = this.connection.createChannel({
       json: true,
       setup: async (channel: ConfirmChannel) => {
@@ -70,6 +94,7 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
       },
     });
 
+    this.logger.log('QueueService', '⏳ Waiting for publisher channel to connect...');
     await this.publishChannel.waitForConnect();
     this.logger.log('QueueService', '✅ RabbitMQ initialized and configured');
   }
@@ -90,6 +115,14 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
       });
       await channel.bindQueue(queue.name, EXCHANGES.EVENTS, queue.routingKey);
     }
+    // Factory raw queue (no binding – Shovel publishes directly)
+    await channel.assertQueue(FACTORY_RAW_QUEUE, {
+      durable: true,
+      arguments: {
+        'x-dead-letter-exchange': EXCHANGES.DLX,
+        'x-message-ttl': ttl,
+      },
+    });
 
     // Dead Letter Queue
     await channel.assertQueue(DLQ_NAME, { durable: true });
@@ -101,6 +134,10 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     message: Record<string, any>,
     exchange = EXCHANGES.EVENTS,
   ): Promise<void> {
+    if (!this.isConnected()) {
+      this.logger.warn('QueueService', `⚠️ RabbitMQ not connected, skipping publish to [${routingKey}]`);
+      return;
+    }
     try {
       await this.publishChannel.publish(exchange, routingKey, message, {
         persistent: true,
@@ -110,7 +147,7 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error('QueueService', `❌ Publish failed [${routingKey}]: ${errorMessage}`);
-      throw error;
+      // Don't throw - allow app to continue
     }
   }
 
@@ -118,6 +155,10 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     queue: string,
     callback: (msg: Record<string, any>) => Promise<void>,
   ): Promise<void> {
+    if (!this.isConnected()) {
+      this.logger.warn('QueueService', `⚠️ RabbitMQ not connected, skipping consume on [${queue}]`);
+      return;
+    }
     await this.consumeChannel.addSetup(async (channel: ConfirmChannel) => {
       await channel.consume(queue, async (msg: ConsumeMessage | null) => {
         if (!msg) return;
@@ -148,6 +189,10 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async gracefulShutdown() {
+    if (!this.isConnected()) {
+      this.logger.log('QueueService', '🛑 RabbitMQ not connected, skipping shutdown');
+      return;
+    }
     this.logger.log('QueueService', '🛑 Closing RabbitMQ connections...');
     try {
       await this.publishChannel?.close();

@@ -11,8 +11,8 @@ import { ILogger } from '@core/domain/logger.interface';
 @Module({
   imports: [
     NestCacheModule.registerAsync({
-      inject: [ConfigService],
-      useFactory: async (config: ConfigService) => {
+      inject: [ConfigService, ILogger],
+      useFactory: async (config: ConfigService, logger: ILogger) => {
         const clusterNodes = config.get('REDIS_CLUSTER_NODES');
         const isCluster = clusterNodes && clusterNodes.split(',').length > 1;
         const password = config.get('REDIS_PASSWORD') || undefined;
@@ -29,7 +29,7 @@ import { ILogger } from '@core/domain/logger.interface';
             return { host, port: parseInt(port) };
           });
 
-          console.log(`[CacheModule] Connecting to Redis Cluster with ${nodes.length} nodes, Prefix: ${prefix}, TLS: ${isTls}`);
+          logger.log('CacheModule', `Connecting to Redis Cluster with ${nodes.length} nodes, Prefix: ${prefix}, TLS: ${isTls}`);
 
           redisOptions = {
             nodes,
@@ -57,7 +57,7 @@ import { ILogger } from '@core/domain/logger.interface';
           const port = config.get('REDIS_PORT');
           const protocol = isTls ? 'rediss' : 'redis';
 
-          console.log(`[CacheModule] Connecting to Redis at ${host}:${port}, Prefix: ${prefix}, TLS: ${isTls}`);
+          logger.log('CacheModule', `Connecting to Redis at ${host}:${port}, Prefix: ${prefix}, TLS: ${isTls}`);
 
           redisOptions = {
             url: `${protocol}://${host}:${port}`,
@@ -80,21 +80,32 @@ import { ILogger } from '@core/domain/logger.interface';
           const redisClient = store.client;
           const mode = isCluster ? 'Cluster' : 'Client';
 
+          // Check if already connected
+          if (redisClient.isOpen) {
+            logger.log('CacheModule', `✅ Redis ${mode} connected`);
+          }
+
           redisClient.on('connect', () => {
-            console.log(`✅ Redis ${mode} connected`);
+            logger.log('CacheModule', `✅ Redis ${mode} connected`);
+          });
+
+          redisClient.on('ready', () => {
+            logger.log('CacheModule', `✅ Redis ${mode} ready`);
           });
 
           redisClient.on('error', (err: Error) => {
-            console.error(`❌ Redis ${mode} error:`, err);
+            logger.error('CacheModule', `❌ Redis ${mode} error: ${err.message}`);
           });
 
           redisClient.on('close', () => {
-            console.log(`🔄 Redis ${mode} connection closed`);
+            logger.log('CacheModule', `🔄 Redis ${mode} connection closed`);
           });
 
           redisClient.on('reconnecting', () => {
-            console.log(`🔄 Redis ${mode} reconnecting...`);
+            logger.log('CacheModule', `🔄 Redis ${mode} reconnecting...`);
           });
+        } else {
+          logger.warn('CacheModule', '⚠️  Redis client not available in store');
         }
 
         return {

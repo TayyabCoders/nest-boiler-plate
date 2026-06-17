@@ -34,6 +34,14 @@ import { CacheModule } from '@infra/cache/cache.module';
 
 import { TenantsModule } from '@modules/tenants/tenants.module';
 
+import { UsersModule } from '@modules/users/users.module';
+
+import { RolesModule } from '@modules/roles/roles.module';
+
+import { AuditLogsModule } from '@modules/audit-logs/audit-logs.module';
+
+import { AuditLoggingInterceptor } from '@modules/audit-logs/common/interceptors/audit-logging.interceptor';
+
 import { RequestLoggingMiddleware } from '@common/middleware/request-logging.middleware';
 
 import { RateLimitModule } from '@infra/rate-limit/rate-limit.module';
@@ -41,6 +49,16 @@ import { RateLimitModule } from '@infra/rate-limit/rate-limit.module';
 import { CustomThrottlerGuard } from '@common/guards/rate-limit.guard';
 
 import { RateLimitInterceptor } from '@common/interceptors/rate-limit.interceptor';
+
+import { JwtModule, JwtService } from '@nestjs/jwt';
+
+import { ConfigService } from '@nestjs/config';
+
+import { Reflector } from '@nestjs/core';
+
+import { ILogger } from '@core/domain/logger.interface';
+
+import { AuthGuard } from '@common/guards/auth.guard';
 
 
 
@@ -84,7 +102,25 @@ import { RateLimitInterceptor } from '@common/interceptors/rate-limit.intercepto
 
     TenantsModule,
 
+    UsersModule,
+
+    RolesModule,
+
     RateLimitModule,
+
+    AuditLogsModule,
+
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET') || 'your-secret-key',
+        signOptions: {
+          expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '7d' as any,
+        },
+      }),
+      inject: [ConfigService],
+      global: true,
+    }),
 
   ],
 
@@ -120,6 +156,14 @@ import { RateLimitInterceptor } from '@common/interceptors/rate-limit.intercepto
 
     {
 
+      provide: APP_INTERCEPTOR,
+
+      useClass: AuditLoggingInterceptor,
+
+    },
+
+    {
+
       provide: APP_FILTER,
 
       useClass: AllExceptionsFilter,
@@ -133,6 +177,8 @@ import { RateLimitInterceptor } from '@common/interceptors/rate-limit.intercepto
       useClass: CustomThrottlerGuard,
 
     },
+
+    AuthGuard,
 
   ],
 

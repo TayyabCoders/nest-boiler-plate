@@ -87,11 +87,12 @@ export class RequestLoggingMiddleware implements NestMiddleware {
     const self = this;
     res.send = function (data) {
       res.send = originalSend;
-      const response = res.send(data);
 
       // Log request completion
       const duration = Date.now() - req.context.startTime;
       res.setHeader('x-response-time', `${duration}ms`);
+      
+      const response = res.send(data);
 
       self.loggingHelpers.logRequest(req, res, duration);
 

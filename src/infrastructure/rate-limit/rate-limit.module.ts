@@ -14,24 +14,8 @@ import { rateLimitConfig } from '@config/rate-limit.config';
         return {
           throttlers: [
             {
-              name: 'global',
               ttl: cfg.global.ttl,
               limit: cfg.global.limit,
-            },
-            {
-              name: 'auth',
-              ttl: cfg.auth.ttl,
-              limit: cfg.auth.limit,
-            },
-            {
-              name: 'apiKey',
-              ttl: cfg.apiKey.ttl,
-              limit: cfg.apiKey.limit,
-            },
-            {
-              name: 'ip',
-              ttl: cfg.ip.ttl,
-              limit: cfg.ip.limit,
             },
           ],
         };

@@ -1,5 +1,6 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Optional } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Inject } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { JwtService } from '@nestjs/jwt';
 import { ILogger } from '@core/domain/logger.interface';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
@@ -8,8 +9,8 @@ export class AuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly logger: ILogger,
-    @Optional() private jwtService?: any,
-    @Optional() private usersService?: any,
+    @Inject(JwtService) private readonly jwtService: JwtService,
+    @Inject('UserService') private readonly usersService: any,
   ) {}
 
   // Public routes that should skip authentication (matching Fastify pattern)

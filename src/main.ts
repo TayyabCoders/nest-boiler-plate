@@ -4,6 +4,7 @@ import { ZodValidationPipe } from 'nestjs-zod';
 import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import { Request, Response, NextFunction } from 'express';
 
 import { AppModule } from './app.module';
 import { ILogger } from '@core/domain/logger.interface';
@@ -21,6 +22,17 @@ async function bootstrap(): Promise<void> {
 
   app.use(helmet());
   app.enableCors();
+
+  // Handle root path before global prefix
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path === '/' && req.method === 'GET') {
+      return res.status(401).json({
+        error: 'Unauthorized access',
+        message: 'Missing authorization header'
+      });
+    }
+    next();
+  });
 
   app.useGlobalPipes(
     new HybridValidationPipe(),

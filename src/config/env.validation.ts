@@ -48,6 +48,8 @@ export const envSchema = z.object({
 
   JWT_EXPIRATION: z.string().default('1d'),
 
+  JWT_EXPIRES_IN: z.string().default('7d'),
+
 
 
   // Microservice Config
@@ -77,6 +79,8 @@ export const envSchema = z.object({
   AZURE_EMAIL_CONNECTION_STRING: z.string().optional(),
 
   AZURE_EMAIL_SENDER: z.string().optional(),
+
+  FRONTEND_URL: z.string().default('http://localhost:3000'),
 
 
 
@@ -137,5 +141,14 @@ export const envSchema = z.object({
   CIRCUIT_BREAKER_FAILURE_THRESHOLD: z.coerce.number().default(5),
 
   CIRCUIT_BREAKER_RECOVERY_TIMEOUT: z.coerce.number().default(30000),
+
+
+  // Super Admin Config
+
+  SUPER_ADMIN_EMAIL: z.string().optional(),
+
+  SUPER_ADMIN_PASSWORD: z.string().optional(),
+
+  SUPER_ADMIN_NAME: z.string().optional(),
 
 });

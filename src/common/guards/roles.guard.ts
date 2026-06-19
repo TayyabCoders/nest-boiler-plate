@@ -35,12 +35,12 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('Authentication required');
     }
 
-    if (!requiredRoles.includes(user.role)) {
+    if (!requiredRoles.includes(user.role.name)) {
       this.logger.warn('Auth', 'Access denied - insufficient permissions', {
         type: 'access_denied',
         requestId: request.id,
         userId: user.id,
-        userRole: user.role,
+        userRole: user.role.name,
         requiredRoles,
         method: request.method,
         url: request.url,

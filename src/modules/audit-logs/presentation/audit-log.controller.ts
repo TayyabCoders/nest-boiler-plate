@@ -10,7 +10,7 @@ import { ApiResponse } from '@common/responses/api.response';
 @ApiTags('Audit Logs')
 @Controller('audit-logs')
 @UseGuards(AuthGuard, RolesGuard)
-@Roles('admin', 'superadmin')
+@Roles('admin', 'super-admin')
 @ApiBearerAuth()
 export class AuditLogController {
   constructor(private readonly auditLogService: AuditLogService) {}

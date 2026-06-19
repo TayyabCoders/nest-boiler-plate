@@ -1,39 +1,37 @@
 services:
-  # --- PostgreSQL Database Service ---
   postgres:
-    image: postgres:16-alpine # Using a lightweight image
-    container_name: luxxage_dev_db_local
+    image: postgres:16-alpine
+    container_name: postgres_tnt
     restart: unless-stopped
     ports:
-      - "5432:5432" # Exposes the PostgreSQL port
+      - "${DB_PORT:-5432}:5432"
     environment:
-      POSTGRES_USER: docker
-      POSTGRES_PASSWORD: docker
-      POSTGRES_DB: luxxage_dev_db_local
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     volumes:
-      - postgres_data:/var/lib/postgresql/data # Persist data
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - app-network
 
-  # --- Redis Cache/Store Service ---
   redis:
-    image: redis:7-alpine # Using a lightweight image
-    container_name: redis_cache_luxxage
+    image: redis:7-alpine
+    container_name: redis_tnt
     restart: unless-stopped
     command: redis-server --requirepass Redis
     ports:
-      - "6379:6379" # Exposes the Redis port
+      - "6379:6379"
     environment:
       - REDIS_PASSWORD=Redis
     volumes:
-      - redis_data:/data # Persist data
+      - redis_data:/data
     networks:
       - app-network
 
   # --- RabbitMQ Message Queue Service ---
   rabbitmq:
     image: rabbitmq:3-management
-    container_name: rabbitmq_luxxage
+    container_name: rabbitmq_tnt
     restart: unless-stopped
     ports:
       - "5672:5672" # AMQP port
@@ -51,25 +49,22 @@ services:
     networks:
       - app-network
 
-  # --- Adminer Management Tool Service ---
   adminer:
-    image: adminer:latest # A single-file universal database management tool
-    container_name: adminer_ui_luxxage
+    image: adminer:latest
+    container_name: adminer_ui_tnt
     restart: unless-stopped
     depends_on:
       - postgres
     ports:
-      - "8080:8080" # Access Adminer via http://localhost:8080
+      - "8080:8080"
     networks:
       - app-network
 
-# --- Volumes for Data Persistence ---
 volumes:
   postgres_data:
   redis_data:
   rabbitmq_data:
 
-# --- Networks for Inter-Service Communication ---
 networks:
   app-network:
     driver: bridge
